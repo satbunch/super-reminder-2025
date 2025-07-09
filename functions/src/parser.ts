@@ -1,5 +1,41 @@
+import * as chrono from 'chrono-node';
+
+// 日本語時間帯を具体的な時間に変換する関数
+function preprocessTimeExpression(text: string): string {
+  const timeMapping: { [key: string]: string } = {
+    '朝': '9時',
+    '昼': '12時',
+    'お昼': '12時',
+    '夕方': '18時',
+    '夜': '21時',
+    '深夜': '23時'
+  };
+
+  let processedText = text;
+  for (const [timeWord, timeValue] of Object.entries(timeMapping)) {
+    processedText = processedText.replace(new RegExp(timeWord, 'g'), timeValue);
+  }
+
+  return processedText;
+}
+
 export function parseReminderMessage(text: string): { remindAt: Date } | null {
   const now = new Date();
+
+  // 1. まず chrono-node で解析を試行
+  try {
+    const preprocessedText = preprocessTimeExpression(text);
+    const parsedDate = chrono.ja.parseDate(preprocessedText, now, { forwardDate: true });
+    
+    if (parsedDate) {
+      // chrono-nodeはローカル時間で解析するため、そのまま返す
+      return { remindAt: parsedDate };
+    }
+  } catch (error) {
+    console.warn('chrono-node parsing failed:', error);
+  }
+
+  // 2. chrono-node が失敗した場合、既存の正規表現ベースの処理にフォールバック
 
   // remindAtの共通化
   const buildRemindAt = (dayOffset: number, hourJST: number, minuteJST = 0) => {
@@ -78,5 +114,9 @@ export function parseReminderMessage(text: string): { remindAt: Date } | null {
     return { remindAt };
   }
 
+  // 3. どちらも失敗した場合はnullを返す
   return null;
 }
+
+// 既存のコードとの互換性のため、古い関数名もエクスポート
+export { parseReminderMessage as parseReminderMessageLegacy };
