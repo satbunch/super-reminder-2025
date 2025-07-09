@@ -1,19 +1,19 @@
-import * as chrono from 'chrono-node';
+import * as chrono from "chrono-node";
 
 // 日本語時間帯を具体的な時間に変換する関数
 function preprocessTimeExpression(text: string): string {
   const timeMapping: { [key: string]: string } = {
-    '朝': '9時',
-    '昼': '12時',
-    'お昼': '12時',
-    '夕方': '18時',
-    '夜': '21時',
-    '深夜': '23時'
+    "朝": "9時",
+    "昼": "12時",
+    "お昼": "12時",
+    "夕方": "18時",
+    "夜": "21時",
+    "深夜": "23時"
   };
 
   let processedText = text;
   for (const [timeWord, timeValue] of Object.entries(timeMapping)) {
-    processedText = processedText.replace(new RegExp(timeWord, 'g'), timeValue);
+    processedText = processedText.replace(new RegExp(timeWord, "g"), timeValue);
   }
 
   return processedText;
@@ -32,7 +32,7 @@ export function parseReminderMessage(text: string): { remindAt: Date } | null {
       return { remindAt: parsedDate };
     }
   } catch (error) {
-    console.warn('chrono-node parsing failed:', error);
+    console.warn("chrono-node parsing failed:", error);
   }
 
   // 2. chrono-node が失敗した場合、既存の正規表現ベースの処理にフォールバック

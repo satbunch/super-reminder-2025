@@ -12,6 +12,8 @@
   },
   "compileOnSave": true,
   "include": [
-    "src"
+    "src",
+    "__tests__",
+    "jest.config.js"
   ]
 }
