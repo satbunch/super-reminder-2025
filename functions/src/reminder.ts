@@ -28,7 +28,7 @@ export const checkReminders = onSchedule("every 1 minutes", async () => {
     return
   }
 
-  console.log(`Found ${snapshot.size} reminder(s) ro send`);
+  console.log(`Found ${snapshot.size} reminder(s) to send`);
 
   await Promise.all(snapshot.docs.map(async (doc) => {
     const data = doc.data();
@@ -50,7 +50,7 @@ export const checkReminders = onSchedule("every 1 minutes", async () => {
       await doc.ref.delete();
       console.log(`Deleted reminder ${doc.id}`);
     } catch (error) {
-      console.error(`Failed ro send reminder ${doc.id}:`, error);
+      console.error(`Failed to send reminder ${doc.id}:`, error);
     }
   }));
 });
