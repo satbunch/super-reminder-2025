@@ -1,0 +1,82 @@
+export function parseReminderMessage(text: string): { remindAt: Date } | null {
+  const now = new Date();
+
+  // remindAtの共通化
+  const buildRemindAt = (dayOffset: number, hourJST: number, minuteJST = 0) => {
+    return new Date(Date.UTC(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + dayOffset,
+      hourJST - 9,
+      minuteJST
+    ));
+  };
+
+  // 明日○時○分
+  const tommorowMatch = text.match(/^明日(?:の)?(\d{1,2})時(?:([0-5]?\d)分)?$/);
+  if (tommorowMatch) {
+    const hour = parseInt(tommorowMatch[1], 10);
+    const minute = tommorowMatch[2] ? parseInt(tommorowMatch[2], 10) : 0;
+    return { remindAt: buildRemindAt(1, hour, minute) };
+  }
+
+  // 今日○時
+  const todayMatch = text.match(/^今日(?:の)?(\d{1,2})時(?:([0-5]?\d)分)?$/);
+  if (todayMatch) {
+    const hour = parseInt(todayMatch[1], 10);
+    const minute = todayMatch[2] ? parseInt(todayMatch[2], 10) : 0;
+    let remindAt = buildRemindAt(0, hour, minute);
+
+    // もしすでに過ぎていたら明日にする
+    if (remindAt.getTime() <= now.getTime()) {
+      remindAt = buildRemindAt(1, hour, minute);
+    }
+
+    return { remindAt };
+  }
+
+  // ○時
+  const hourOnlyMatch = text.match(/^(\d{1,2})時/);
+  if (hourOnlyMatch) {
+    const hour = parseInt(hourOnlyMatch[1], 10);
+    let remindAt = buildRemindAt(0, hour);
+
+    if (remindAt <= now) {
+      remindAt = buildRemindAt(1, hour);
+    }
+
+    return { remindAt };
+  }
+
+  // ○時間後
+  const hoursLaterMatch = text.match(/^(\d{1,2})時間後$/);
+  if (hoursLaterMatch) {
+    const hours = parseInt(hoursLaterMatch[1], 10);
+    const remindAt = new Date(now.getTime() + hours * 60 * 60 * 1000);
+    return { remindAt };
+  }
+
+  // ○分後
+  const minutesLaterMatch = text.match(/^(\d{1,2})分後$/);
+  if (minutesLaterMatch) {
+    const minutes = parseInt(minutesLaterMatch[1], 10);
+    const remindAt = new Date(now.getTime() + minutes * 60 * 1000);
+    return { remindAt };
+  }
+
+  // 〇〇時〇〇分
+  const hourMinuteMatch = text.match(/^(\d{1,2})時(\d{1,2})分$/);
+  if (hourMinuteMatch) {
+    const hour = parseInt(hourMinuteMatch[1], 10);
+    const minute = parseInt(hourMinuteMatch[2], 10);
+    let remindAt = buildRemindAt(0, hour, minute);
+
+    if (remindAt <= now) {
+      remindAt = buildRemindAt(1, hour, minute);
+    }
+
+    return { remindAt };
+  }
+
+  return null;
+}
