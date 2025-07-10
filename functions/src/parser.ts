@@ -3,12 +3,12 @@ import * as chrono from "chrono-node";
 // 日本語時間帯を具体的な時間に変換する関数
 function preprocessTimeExpression(text: string): string {
   const timeMapping: { [key: string]: string } = {
-    "朝": "9時",
-    "昼": "12時",
-    "お昼": "12時",
-    "夕方": "18時",
-    "夜": "21時",
-    "深夜": "23時"
+    "朝": "9時00分",
+    "昼": "12時00分",
+    "お昼": "12時00分",
+    "夕方": "18時00分",
+    "夜": "21時00分",
+    "深夜": "23時00分"
   };
 
   let processedText = text;
@@ -26,7 +26,7 @@ export function parseReminderMessage(text: string): { remindAt: Date } | null {
   try {
     const preprocessedText = preprocessTimeExpression(text);
     const parsedDate = chrono.ja.parseDate(preprocessedText, now, { forwardDate: true });
-    
+
     if (parsedDate) {
       // chrono-nodeはローカル時間で解析するため、そのまま返す
       return { remindAt: parsedDate };
