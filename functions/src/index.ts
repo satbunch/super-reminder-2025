@@ -1,2 +1,2 @@
-export { api } from "./api";
+export { lineWebhook } from "./api";
 export { checkReminders } from "./reminder";

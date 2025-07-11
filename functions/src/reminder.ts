@@ -7,50 +7,54 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-if (!channelAccessToken) {
-  throw new Error("LINE_CHANNEL_ACCESS_TOKEN must be set");
-}
 
-const client = new messagingApi.MessagingApiClient({
-  channelAccessToken,
-});
+export const checkReminders = onSchedule({ schedule: "every 1 minutes", secrets: ["LINE_CHANNEL_ACCESS_TOKEN"] },
+  async () => {
+    const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 
-export const checkReminders = onSchedule("every 1 minutes", async () => {
-  const now = admin.firestore.Timestamp.now();
+    if (!channelAccessToken) {
+      throw new Error("LINE_CHANNEL_ACCESS_TOKEN must be set");
+    }
 
-  const snapshot = await db.collection("reminders")
-    .where("remindAt", "<=", now)
-    .get();
+    const client = new messagingApi.MessagingApiClient({
+      channelAccessToken,
+    });
 
-  if (snapshot.empty) {
-    console.log("No reminders to send");
-    return
+    const now = admin.firestore.Timestamp.now();
+
+    const snapshot = await db.collection("reminders")
+      .where("remindAt", "<=", now)
+      .get();
+
+    if (snapshot.empty) {
+      console.log("No reminders to send");
+      return
+    }
+
+    console.log(`Found ${snapshot.size} reminder(s) to send`);
+
+    await Promise.all(snapshot.docs.map(async (doc) => {
+      const data = doc.data();
+      const userId = data.userId;
+      const message = data.message;
+
+      if (!userId || !message) {
+        console.warn(`Invalid reminder: ${doc.id}`);
+        return;
+      }
+
+      try {
+        await client.pushMessage({
+          to: userId,
+          messages: [{ type: "text", text: message }],
+        });
+        console.log(`Sent reminder to ${userId}: ${message}`);
+
+        await doc.ref.delete();
+        console.log(`Deleted reminder ${doc.id}`);
+      } catch (error) {
+        console.error(`Failed to send reminder ${doc.id}:`, error);
+      }
+    }));
   }
-
-  console.log(`Found ${snapshot.size} reminder(s) to send`);
-
-  await Promise.all(snapshot.docs.map(async (doc) => {
-    const data = doc.data();
-    const userId = data.userId;
-    const message = data.message;
-
-    if (!userId || !message) {
-      console.warn(`Invalid reminder: ${doc.id}`);
-      return;
-    }
-
-    try {
-      await client.pushMessage({
-        to: userId,
-        messages: [{ type: "text", text: message }],
-      });
-      console.log(`Sent reminder to ${userId}: ${message}`);
-
-      await doc.ref.delete();
-      console.log(`Deleted reminder ${doc.id}`);
-    } catch (error) {
-      console.error(`Failed to send reminder ${doc.id}:`, error);
-    }
-  }));
-});
+);
