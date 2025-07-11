@@ -1,4 +1,5 @@
 import * as chrono from "chrono-node";
+import { logger } from "firebase-functions";
 
 // 日本語時間帯を具体的な時間に変換する関数
 function preprocessTimeExpression(text: string): string {
@@ -21,18 +22,44 @@ function preprocessTimeExpression(text: string): string {
 
 export function parseReminderMessage(text: string): { remindAt: Date } | null {
   const now = new Date();
+  
+  logger.info("[Parser Debug] Starting parseReminderMessage", {
+    originalText: text,
+    now: now.toISOString(),
+    nowLocal: now.toString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+  });
 
   // 1. まず chrono-node で解析を試行
   try {
     const preprocessedText = preprocessTimeExpression(text);
-    const parsedDate = chrono.ja.parseDate(preprocessedText, now, { forwardDate: true });
+    logger.info("[Parser Debug] Preprocessed text", {
+      original: text,
+      preprocessed: preprocessedText
+    });
+    
+    const parsedDate = chrono.ja.parseDate(preprocessedText, now, { 
+      forwardDate: true
+    });
 
     if (parsedDate) {
-      // chrono-nodeはローカル時間で解析するため、そのまま返す
-      return { remindAt: parsedDate };
+      // chrono-nodeはUTC環境で解析するため、結果をJST意図として扱い、UTCに正しく変換
+      const correctedDate = new Date(parsedDate.getTime() - 9 * 60 * 60 * 1000);
+      
+      logger.info("[Parser Debug] chrono-node success", {
+        originalParsedDate: parsedDate.toISOString(),
+        originalParsedDateLocal: parsedDate.toString(),
+        correctedDate: correctedDate.toISOString(),
+        correctedDateLocal: correctedDate.toString(),
+        correctedDateJST: new Date(correctedDate.getTime() + 9 * 60 * 60 * 1000).toISOString()
+      });
+      
+      return { remindAt: correctedDate };
+    } else {
+      logger.info("[Parser Debug] chrono-node returned null");
     }
   } catch (error) {
-    console.warn("chrono-node parsing failed:", error);
+    logger.warn("[Parser Debug] chrono-node parsing failed:", error);
   }
 
   // 2. chrono-node が失敗した場合、既存の正規表現ベースの処理にフォールバック
@@ -115,6 +142,7 @@ export function parseReminderMessage(text: string): { remindAt: Date } | null {
   }
 
   // 3. どちらも失敗した場合はnullを返す
+  logger.info("[Parser Debug] All parsing methods failed, returning null");
   return null;
 }
 
