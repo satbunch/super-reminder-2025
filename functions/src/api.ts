@@ -38,7 +38,6 @@ export const lineWebhook = onRequest({ secrets: ["LINE_CHANNEL_ACCESS_TOKEN", "L
 
   try {
     await middleware(config)(req, res, async () => {
-      logger.info("Middleware passed, processing events");
 
       const events: WebhookEvent[] = req.body.events;
 
@@ -56,12 +55,11 @@ export const lineWebhook = onRequest({ secrets: ["LINE_CHANNEL_ACCESS_TOKEN", "L
         }
 
         const session = await getSession(userId);
-        logger.debug("Loaded session", { session });
 
         if (session.status === "idle" && message.includes("リマインド")) {
           await saveSession(userId, { status: "waiting_for_task" });
-          await client.pushMessage({
-            to: userId,
+          await client.replyMessage({
+            replyToken: event.replyToken,
             messages: [{ type: "text", text: "後で思い出したいことを教えて" }],
           });
           return;
@@ -69,8 +67,8 @@ export const lineWebhook = onRequest({ secrets: ["LINE_CHANNEL_ACCESS_TOKEN", "L
 
         if (session.status === "waiting_for_task") {
           await saveSession(userId, { status: "waiting_for_time", task: message });
-          await client.pushMessage({
-            to: userId,
+          await client.replyMessage({
+            replyToken: event.replyToken,
             messages: [{ type: "text", text: `「${message}」だね！いつ教えて欲しい？` }],
           });
           return;
@@ -79,8 +77,8 @@ export const lineWebhook = onRequest({ secrets: ["LINE_CHANNEL_ACCESS_TOKEN", "L
         if (session.status === "waiting_for_time" && session.task) {
           const parsed = parseReminderMessage(message);
           if (!parsed) {
-            await client.pushMessage({
-              to: userId,
+            await client.replyMessage({
+              replyToken: event.replyToken,
               messages: [{ type: "text", text: "ごめん、時間がよく分からなかった..." }],
             });
             return;
@@ -110,8 +108,8 @@ export const lineWebhook = onRequest({ secrets: ["LINE_CHANNEL_ACCESS_TOKEN", "L
           return;
         }
 
-        await client.pushMessage({
-          to: userId,
+        await client.replyMessage({
+          replyToken: event.replyToken,
           messages: [{ type: "text", text: "「リマインド」って言ってくれると登録できるよ！" }],
         });
       }));
