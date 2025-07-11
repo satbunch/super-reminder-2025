@@ -1,5 +1,9 @@
 {
   "projects": {
-    "default": "super-reminder-2025"
-  }
+    "default": "super-reminder-2025",
+    "dev": "super-reminder-2025-dev",
+    "prod": "super-reminder-2025-prod"
+  },
+  "targets": {},
+  "etags": {}
 }
