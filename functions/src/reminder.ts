@@ -8,6 +8,23 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+export const listReminders = async (userId: string) => {
+  const snapshot = await db.collection("reminders").where("userId", "==", userId).get();
+
+  if (snapshot.empty) {
+    return "リマインダーはありません。";
+  }
+
+  let remindersList = "登録されているリマインダー:\n";
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    const remindAt = data.remindAt.toDate();
+    remindersList += `${data.message} - ${remindAt.toLocaleString()}\n`;
+  })
+
+  return remindersList;
+}
+
 export const checkReminders = onSchedule({ schedule: "every 1 minutes", secrets: ["LINE_CHANNEL_ACCESS_TOKEN"] },
   async () => {
     const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
