@@ -7,7 +7,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { clearSession, getSession, saveSession } from "./session";
 import { parseReminderMessage } from "./parser";
 import { logger } from "firebase-functions";
-import { listReminders } from "./reminder";
+import { generateReminderFlex, listReminders } from "./reminder";
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -51,11 +51,34 @@ export const lineWebhook = onRequest({ secrets: ["LINE_CHANNEL_ACCESS_TOKEN", "L
 
           if (!userId) return;
 
-          if (data === "action=askReminder") {
+          const parsedData = new URLSearchParams(data);
+          const action = parsedData.get("action");
+
+          if (action === "askReminder") {
             await saveSession(userId, { status: "waiting_for_task" });
             await client.replyMessage({
               replyToken: event.replyToken,
               messages: [{ type: "text", text: "後で思い出したいことを教えて \nやめるときはキャンセルね" }],
+            });
+            return;
+          }
+
+          if (action === "deleteReminder") {
+            const id = parsedData.get("id");
+            if (!id) {
+              await client.replyMessage({
+                replyToken: event.replyToken,
+                messages: [{ type: "text", text: "削除対象のIDが見つかりませんでした" }],
+              });
+              return;
+            }
+
+            const db = admin.firestore();
+            await db.collection("reminders").doc(id).delete();
+
+            await client.replyMessage({
+              replyToken: event.replyToken,
+              messages: [{ type: "text", text: "リマインダを削除しました" }],
             });
             return;
           }
@@ -93,9 +116,19 @@ export const lineWebhook = onRequest({ secrets: ["LINE_CHANNEL_ACCESS_TOKEN", "L
 
         if (session.status === "idle" && message === "リマインド一覧") {
           const reminderList = await listReminders(userId);
+          if (reminderList.length === 0) {
+            await client.replyMessage({
+              replyToken: event.replyToken,
+              messages: [{ type: "text", text: "リマインダはありません" }],
+            });
+            return;
+          }
+
+          const flex = generateReminderFlex(reminderList) as messagingApi.FlexMessage;
+
           await client.replyMessage({
             replyToken: event.replyToken,
-            messages: [{ type: "text", text: reminderList }],
+            messages: [flex],
           });
           return;
         }
